@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title }}</title>
+
+  <!-- Lien vers la feuille de style pour un look professionnel proche du site HEP -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+
+  <style>
+    header {
+      background-color: #0070c0;
+      padding: 10px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #logo {
+      width: 150px;
+      height: auto;
+      cursor: pointer;
+    }
+
+    .highlighted {
+      color: orange;
+    }
+
+    .user-info {
+      color: white;
+      margin-right: 20px;
+      font-size: 1.2em;
+    }
+
+    button,
+    a {
+      padding: 10px 20px;
+      background-color: #0070c0;
+      color: white;
+      border: none;
+      text-decoration: none;
+      cursor: pointer;
+      font-size: 1em;
+      margin: 10px 0;
+      display: block;
+      width: fit-content;
+      border-radius: 0;
+    }
+
+    button:hover,
+    a:hover {
+      background-color: #005a9c;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .button-group {
+      margin-top: 20px;
+    }
+  </style>
+
+  <script>
+    let wordTimings = [];
+    let currentWordIndex = 0;
+
+    function fetchWordTimings() {
+      fetch('{{ url_for("static", filename=sync_path) }}')
+        .then(response => response.json())
+        .then(data => {
+          wordTimings = data;
+        });
+    }
+
+    function playAudio() {
+      const audio = document.getElementById("audio");
+      audio.currentTime = 0;
+      audio.play();
+      currentWordIndex = 0;
+      resetHighlighting();
+      highlightText();
+
+      // Redirection automatique vers la page suivante après l'audio (page retour/2)
+      {% if page_number == 2 %}
+      audio.onended = function () {
+        window.location.href = "{{ url_for('lecture', page_number=3) }}";  // Redirection vers la page 3
+      };
+      {% endif %}
+    }
+
+    function resetHighlighting() {
+      const textContainer = document.getElementById("text");
+      const words = textContainer.getElementsByTagName("span");
+      for (let word of words) {
+        word.classList.remove("highlighted");
+      }
+    }
+
+    function highlightText() {
+      const audio = document.getElementById("audio");
+      const textContainer = document.getElementById("text");
+      const words = textContainer.getElementsByTagName("span");
+
+      audio.ontimeupdate = () => {
+        if (currentWordIndex < wordTimings.length) {
+          const { start, end } = wordTimings[currentWordIndex];
+          if (audio.currentTime >= start && audio.currentTime <= end) {
+            words[currentWordIndex].classList.add("highlighted");
+          } else if (audio.currentTime > end) {
+            currentWordIndex++;
+          }
+        }
+      };
+    }
+
+    window.onload = () => {
+      fetchWordTimings();
+      if (document.getElementById("audio")) {
+        playAudio(); // Jouer l'audio automatiquement
+      }
+    };
+  </script>
+</head>
+
+<body>
+  <!-- En-tête avec le logo HEP dans une barre bleue -->
+  <header>
+    <div class="container">
+      <img id="logo" src="{{ url_for('static', filename='images/hep.svg') }}" alt="Logo HEP"
+        onclick="window.location.href='{{ url_for('selection_lecture') }}'" />
+    </div>
+    <div class="user-info">
+      Vous êtes connecté en tant que {{ current_user.username }}
+      <a href="{{ url_for('logout') }}" class="logout-button">Se déconnecter</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <h1>{{ title }}</h1>
+    <div>
+      <img src="{{ url_for('static', filename=image_path) }}" alt="Page Image" />
+      <p id="text">
+        {% for word in page_text.split() %}
+        <span>{{ word }}</span>
+        {% endfor %}
+      </p>
+    </div>
+
+    {% if audio_path %}
+    <audio id="audio" src="{{ url_for('static', filename=audio_path) }}"></audio>
+    {% endif %}
+
+    <div class="button-group">
+      <a href="{{ url_for('lecture', page_number=3) }}">Page suivante</a>
+      <!-- Bouton manuel pour aller à la page 3 -->
+      <a href="{{ url_for('selection_lecture') }}">Retour à la sélection des albums</a>
+    </div>
+  </div>
+</body>
+
+</html>

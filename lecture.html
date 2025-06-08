@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title }} - Page {{ page_number }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+  <style>
+    .interactive-zone {
+      position: absolute;
+      border: 2px solid red;
+      cursor: pointer;
+      background-color: rgba(255,
+          0,
+          0,
+          0.3);
+      /* Couleur transparente pour mieux visualiser les zones */
+    }
+
+    .page-container {
+      position: relative;
+      width: 800px;
+      margin: auto;
+    }
+
+    .page-image {
+      width: 100%;
+      display: block;
+      margin-bottom: 20px;
+    }
+
+    .text-content {
+      font-size: 1.2em;
+      margin-bottom: 20px;
+    }
+
+    .controls {
+      margin-bottom: 20px;
+    }
+
+    /* Style des boutons */
+    button {
+      padding: 10px 20px;
+      background-color: #0070c0;
+      color: white;
+      border: none;
+      font-size: 1em;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #005a9c;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>{{ title }} - Page {{ page_number }}</h1>
+
+  <div class="page-container">
+    <img src="{{ url_for('static', filename=page.image) }}" class="page-image" alt="Illustration" />
+
+    <!-- Zones interactives -->
+    {% for zone in page.zones %}
+    <div class="interactive-zone"
+      style="top: {{ zone.y }}px; left: {{ zone.x }}px; width: {{ zone.width }}px; height: {{ zone.height }}px;"
+      onclick="speak('{{ zone.action }}')"></div>
+    {% endfor %}
+  </div>
+
+  <!-- Texte de la page avec surbrillance si activé -->
+  {% if page.highlight_text %}
+  <p class="text-content" id="textContent">{{ page.text }}</p>
+  {% endif %}
+
+  <!-- Boutons pour les fonctionnalités -->
+  <div class="controls">
+    <button onclick="playAudio()">Lire le texte</button>
+    {% if page.enable_repeat %}
+    <button onclick="startSpeechRecognition()">Répéter après moi</button>
+    {% endif %}
+  </div>
+
+  <!-- Audio player -->
+  <audio id="audioPlayer" src="{{ url_for('static', filename=page.audio) }}"></audio>
+
+  <script>
+    function playAudio() {
+      var audio = document.getElementById("audioPlayer");
+      var textElement = document.getElementById("textContent");
+      var text = textElement ? textElement.textContent.split(" ") : [];
+      var wordIndex = 0;
+
+      if (textElement) {
+        // Efface la surbrillance initiale
+        textElement.innerHTML = text.join(" ");
+      }
+
+      audio.play();
+
+      // Surbrillance du texte au fur et à mesure de la lecture
+      audio.addEventListener("timeupdate", function () {
+        if (textElement && wordIndex < text.length) {
+          var currentTime = audio.currentTime;
+          var wordDuration = audio.duration / text.length;
+
+          if (currentTime >= wordIndex * wordDuration) {
+            text[wordIndex] = `<span class="highlighted">${text[wordIndex]}</span>`;
+            textElement.innerHTML = text.join(" ");
+            wordIndex++;
+          }
+        }
+      });
+
+      // Réinitialiser après la lecture
+      audio.addEventListener("ended", function () {
+        if (textElement) {
+          textElement.innerHTML = text.join(" ");
+        }
+        wordIndex = 0;
+
+        // Si c'est la dernière page et le chaton a été touché, jouer le son "bravo"
+        if ({{ page_number }
+      } == 4) {
+        var bravoAudio = new Audio("{{ url_for('static', filename='chaton/bravo.mp3') }}");
+        bravoAudio.play();
+
+        bravoAudio.onended = function () {
+          // Redirection après avoir touché le chaton et joué le son
+          window.location.href = "{{ url_for('selection_lecture') }}";
+        };
+      }
+    });
+      }
+
+    function speak(text) {
+      var msg = new SpeechSynthesisUtterance(text);
+      window.speechSynthesis.speak(msg);
+    }
+
+    function startSpeechRecognition() {
+      if (!('webkitSpeechRecognition' in window)) {
+        alert("La reconnaissance vocale n'est pas supportée par ce navigateur.");
+        return;
+      }
+      var recognition = new webkitSpeechRecognition();
+      recognition.lang = "fr-FR";
+      recognition.onresult = function (event) {
+        var transcript = event.results[0][0].transcript;
+        alert("Vous avez dit : " + transcript);
+      };
+      recognition.start();
+    }
+  </script>
+</body>
+
+</html>

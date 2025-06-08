@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+  <title>Test de vocabulaire</title>
+
+  <!-- Lien vers la feuille de style pour le look HEP -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+
+  <style>
+    header {
+      background-color: #0070c0;
+      /* Bleu HEP */
+      padding: 10px 0;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    #logo {
+      width: 150px;
+      height: auto;
+    }
+
+    h1 {
+      color: #0070c0;
+      font-size: 2em;
+    }
+
+    .image-container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .image-container img {
+      width: 120px;
+      height: 120px;
+      cursor: pointer;
+      border: 2px solid #0070c0;
+      border-radius: 10px;
+      transition: transform 0.3s ease;
+    }
+
+    .image-container img:hover {
+      transform: scale(1.1);
+    }
+
+    .message {
+      font-size: 1.2em;
+      margin: 20px 0;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .error {
+      color: red;
+    }
+
+    button,
+    a {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #0070c0;
+      color: white;
+      border: none;
+      text-decoration: none;
+      cursor: pointer;
+      font-size: 1em;
+      margin: 10px 10px 0 0;
+    }
+
+    button:hover,
+    a:hover {
+      background-color: #005a9c;
+    }
+
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    h1,
+    p,
+    ul {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- En-tête avec le logo HEP dans une barre bleue -->
+  <header>
+    <div class="container">
+      <img id="logo" src="{{ url_for('static', filename='images/hep.svg') }}" alt="Logo HEP" />
+    </div>
+  </header>
+
+  <div class="container">
+    <h1>Test de vocabulaire</h1>
+
+    <!-- Affichage de la question et des images -->
+    {% if question %}
+    <p class="message">
+      {% if question == 1 %} Quelle est l'orange parmi ces quatre images ? {%
+      elif question == 2 %} Quelle est la pomme parmi ces quatre images ? {%
+      elif question == 3 %} Quel est le fromage parmi ces quatre images ? {%
+      elif question == 4 %} Quel est l'œuf parmi ces quatre images ? {% elif
+      question == 5 %} Quel est le croissant parmi ces quatre images ? {% elif
+      question == 6 %} Quelle est la tarte parmi ces quatre images ? {% endif
+      %}
+    </p>
+
+    <!-- Conteneur pour les images des réponses (mis à jour pour chaque question) -->
+    <div class="image-container">
+      {% if question == 1 %}
+      <a href="{{ url_for('test', question=question, answer='pomme') }}">
+        <img src="{{ url_for('static', filename='images/pomme.jpg') }}" alt="Pomme" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='orange') }}">
+        <img src="{{ url_for('static', filename='images/orange.jpg') }}" alt="Orange" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='fraise') }}">
+        <img src="{{ url_for('static', filename='images/fraise.jpg') }}" alt="Fraise" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='cerise') }}">
+        <img src="{{ url_for('static', filename='images/cerise.jpg') }}" alt="Cerise" />
+      </a>
+      {% elif question == 2 %}
+      <a href="{{ url_for('test', question=question, answer='fraise') }}">
+        <img src="{{ url_for('static', filename='images/fraise.jpg') }}" alt="Fraise" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='cerise') }}">
+        <img src="{{ url_for('static', filename='images/cerise.jpg') }}" alt="Cerise" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='pomme') }}">
+        <img src="{{ url_for('static', filename='images/pomme.jpg') }}" alt="Pomme" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='orange') }}">
+        <img src="{{ url_for('static', filename='images/orange.jpg') }}" alt="Orange" />
+      </a>
+      {% elif question == 3 %}
+      <a href="{{ url_for('test', question=question, answer='oeuf') }}">
+        <img src="{{ url_for('static', filename='images/oeuf.jpg') }}" alt="Oeuf" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='fromage') }}">
+        <img src="{{ url_for('static', filename='images/fromage.jpg') }}" alt="Fromage" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='frite') }}">
+        <img src="{{ url_for('static', filename='images/frite.jpg') }}" alt="Frite" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='banane') }}">
+        <img src="{{ url_for('static', filename='images/banane.jpg') }}" alt="Banane" />
+      </a>
+      {% elif question == 4 %}
+      <a href="{{ url_for('test', question=question, answer='banane') }}">
+        <img src="{{ url_for('static', filename='images/banane.jpg') }}" alt="Banane" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='frite') }}">
+        <img src="{{ url_for('static', filename='images/frite.jpg') }}" alt="Frite" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='fromage') }}">
+        <img src="{{ url_for('static', filename='images/fromage.jpg') }}" alt="Fromage" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='oeuf') }}">
+        <img src="{{ url_for('static', filename='images/oeuf.jpg') }}" alt="Oeuf" />
+      </a>
+      {% elif question == 5 %}
+      <a href="{{ url_for('test', question=question, answer='kiwi') }}">
+        <img src="{{ url_for('static', filename='images/kiwi.jpg') }}" alt="Kiwi" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='tarte') }}">
+        <img src="{{ url_for('static', filename='images/tarte.jpg') }}" alt="Tarte" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='confiture') }}">
+        <img src="{{ url_for('static', filename='images/confiture.jpg') }}" alt="Confiture" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='croissant') }}">
+        <img src="{{ url_for('static', filename='images/croissant.jpg') }}" alt="Croissant" />
+      </a>
+      {% elif question == 6 %}
+      <a href="{{ url_for('test', question=question, answer='kiwi') }}">
+        <img src="{{ url_for('static', filename='images/kiwi.jpg') }}" alt="Kiwi" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='confiture') }}">
+        <img src="{{ url_for('static', filename='images/confiture.jpg') }}" alt="Confiture" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='croissant') }}">
+        <img src="{{ url_for('static', filename='images/croissant.jpg') }}" alt="Croissant" />
+      </a>
+      <a href="{{ url_for('test', question=question, answer='tarte') }}">
+        <img src="{{ url_for('static', filename='images/tarte.jpg') }}" alt="Tarte" />
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- Affichage des résultats finaux du test -->
+    {% else %}
+    <p class="message">{{ result }}</p>
+    <p class="message success">
+      Nombre de réponses correctes : {{ correct_count }}
+    </p>
+    <p class="message error">
+      Nombre de réponses incorrectes : {{ incorrect_count }}
+    </p>
+    <p class="message">
+      Pourcentage de réponses correctes : {{ percentage_correct }}%
+    </p>
+
+    {% if incorrect_words %}
+    <p>Mots incorrects :</p>
+    <ul>
+      {% for word in incorrect_words %}
+      <li>{{ word }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <!-- Groupe de boutons pour accéder à la suite -->
+    <div class="button-group">
+      <a href="{{ url_for('selection_lecture') }}">Accéder au site de lecture</a>
+      <a href="{{ url_for('logout') }}">Déconnexion</a>
+    </div>
+    {% endif %}
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <title>{{ title }}</title>
+
+  <!-- Lien vers la feuille de style pour un look professionnel proche du site HEP -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <script src="{{ url_for('static', filename='js/howler.js') }}"></script>
+  <script src="//cdn.jsdelivr.net/npm/eruda"></script>
+  <script>eruda.init();</script>
+
+  <style>
+    /* Ajout du style de la barre bleue en haut */
+    header {
+      background-color: #0070c0;
+      /* Bleu HEP */
+      padding: 10px 0;
+    }
+
+    #logo {
+      width: 150px;
+      height: auto;
+      cursor: pointer;
+      margin-left: 20px;
+      /* Ajoute un petit espace en haut */
+      margin-top: 10px;
+      /* Ajoute un petit espace en haut */
+    }
+
+    /* Style pour le texte du karaoké */
+    .highlighted {
+      color: orange;
+    }
+
+    /* Texte de l'utilisateur connecté */
+    .user-info {
+      color: white;
+      font-size: 1.2em;
+      display: flex;
+      align-items: center;
+    }
+
+
+    /* Style uniforme pour les boutons */
+    button,
+    a {
+      padding: 10px 20px;
+      background-color: #0070c0;
+      color: white;
+      border: none;
+      text-decoration: none;
+      cursor: pointer;
+      font-size: 1em;
+      margin: 10px 0;
+      display: block;
+      width: fit-content;
+      border-radius: 0;
+      margin-right: 20px;
+      /* Pas de coins arrondis */
+    }
+
+    button:hover,
+    a:hover {
+      background-color: #005a9c;
+    }
+
+    /* Gérer l'espace entre les éléments */
+    .button-group {
+      margin-top: 20px;
+      text-align: right;
+      /* Aligner le bouton à droite */
+    }
+
+    /* Style pour l'image de "Page suivante" */
+    .next-button img {
+      width: 150px;
+      border: none;
+      /* Supprimer les bordures */
+      background-color: transparent;
+      /* Supprimer l'arrière-plan */
+    }
+
+    /* Style de l'image (dividée en tiers) */
+    .clickable-image {
+      position: relative;
+    }
+
+    .clickable-image img {
+      width: 100%;
+      height: auto;
+    }
+
+    /* Style du bouton de déconnexion */
+    .logout-button {
+      padding: 10px 20px;
+      background-color: #0070c0;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 1em;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+
+    .logout-button:hover {
+      background-color: #005a9c;
+    }
+
+    #clickable-o {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 94px;
+      height: 94px;
+      animation: pulse 1.5s infinite;
+      cursor: pointer;
+      display: none;
+    }
+
+    #clickable-fourmi {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 160px;
+      height: 160px;
+      animation: pulse 1.5s infinite;
+      cursor: pointer;
+      display: none;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        transform: translate(-50%, -50%) scale(1.2);
+      }
+
+      opacity: 0.7;
+
+      100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+      }
+    }
+  </style>
+
+  <script>
+    class Player {
+      constructor() {
+        this.sound = null; // Stores the current Howl instance
+        this.queue = []; // Queue for multiple audio files
+        this.isPlaying = false;
+        this.audioUnlocked = false; // Track if Howler.js is unlocked
+
+        // Unlock Howler.js audio on the first user interaction
+        document.addEventListener("DOMContentLoaded", () => {
+          document.body.addEventListener("click", () => this.unlockAudio(), { once: true });
+        });
+      }
+
+      /**
+        * Unlocks Howler.js on iOS by playing a silent sound.
+        */
+      unlockAudio() {
+        if (!this.audioUnlocked) {
+          console.log("🔓 Unlocking Howler.js for iOS Safari...");
+          const silentSound = new Howl({
+            src: ["{{ url_for('static', filename='books/audio/silence.mp3') }}"], // Flask static file path
+            volume: 0,
+            autoplay: true,
+            html5: true,
+            onplay: () => {
+              this.audioUnlocked = true;
+              console.log("✅ Howler.js audio unlocked!");
+            },
+            onend: () => silentSound.unload()
+          });
+        }
+      }
+
+      /**
+        * Load and play an audio file.
+        * @param {string} src - The path to the audio file.
+        * @param {function} onEndCallback - Function to call when the sound ends.
+        */
+      play(src, onEndCallback = null) {
+        if (!this.audioUnlocked) {
+          console.warn("⚠️ Audio not unlocked yet! Trying to unlock...");
+          this.unlockAudio();
+        }
+
+        // Stop any currently playing sound
+        this.stop();
+
+        this.sound = new Howl({
+          src: [src],
+          volume: 1.0,
+          autoplay: true,
+          html5: true,
+          onplay: () => {
+            this.isPlaying = true;
+            console.log(`🎵 Playing: ${src}`);
+          },
+          onend: () => {
+            this.isPlaying = false;
+            console.log(`✅ Finished: ${src}`);
+            if (onEndCallback) {
+              onEndCallback();
+            }
+            this.playNext(); // Play next sound in queue if available
+          },
+          onloaderror: (id, error) => console.log("🔴 Error loading audio:", error),
+          onplayerror: (id, error) => {
+            console.error("🔴 Playback error:", error);
+            this.sound.once("unlock", () => {
+              this.sound.play();
+            });
+          }
+        });
+      }
+
+      /**
+        * Pause the currently playing sound.
+        */
+      pause() {
+        if (this.sound && this.isPlaying) {
+          this.sound.pause();
+          this.isPlaying = false;
+          console.log("⏸️ Paused");
+        }
+      }
+
+      /**
+        * Resume playback if a sound is paused.
+        */
+      resume() {
+        if (this.sound && !this.isPlaying) {
+          this.sound.play();
+          this.isPlaying = true;
+          console.log("▶️ Resumed");
+        }
+      }
+
+      /**
+        * Stop playback and reset the sound.
+        */
+      stop() {
+        if (this.sound) {
+          this.sound.stop();
+          this.isPlaying = false;
+          console.log("⏹️ Stopped");
+          this.sound.unload(); // Ensure Howler.js releases resources
+        }
+      }
+
+      /**
+        * Adjust volume of the current sound.
+        * @param {number} volume - Volume level (0.0 to 1.0).
+        */
+      setVolume(volume) {
+        if (this.sound) {
+          this.sound.volume(volume);
+          console.log(`🔊 Volume set to: ${volume}`);
+        }
+      }
+
+      /**
+        * Add an audio file to the queue.
+        * @param {string} src - The path to the audio file.
+        * @param {function} callback - Optional function to call after this sound.
+        */
+      queueSound(src, callback = null) {
+        this.queue.push({ src, callback });
+        console.log(`📥 Added to queue: ${src}`);
+        if (!this.isPlaying) {
+          this.playNext(); // If nothing is playing, start immediately
+        }
+      }
+
+      /**
+        * Play the next sound in the queue.
+        */
+      playNext() {
+        if (this.queue.length > 0) {
+          const next = this.queue.shift();
+          this.play(next.src, next.callback);
+        }
+      }
+    }
+
+
+    const title = "{{ title }}";
+    const bookTitle = "{{ title }}";
+    let interactions = {{ interactions | tojson }};
+    var selectedLevel = {{ level }};
+    let currentPage;
+    let maxPages;
+    let failureCount = 0;
+    let failureClickCount = 0;
+    let currentInteraction = 0;
+    let isPlayingFailure = false;
+    let isPlayingFailure1on4 = false;
+    let failTimeout = null;
+    let okayClick = false;
+    let interactionTimeout;
+    let secondInteractionTimeout;
+    let bookStarted = false;
+    let howlerAudio = null;
+    const player = new Player();
+
+    function turnPage(url) {
+      setTimeout(() => {
+        const flip = document.getElementById("flip");
+        const container = document.getElementById("big-container");
+        const turn_page = document.getElementById("turn_page_gif");
+
+        turn_page.src = turn_page.src.split("?")[0] + "?" + new Date().getTime();
+        container.style.height = "66vh";
+        turn_page.style.height = "66vh";
+        turn_page.style.display = "block";
+
+        container.appendChild(turn_page);
+      }, 500);
+
+      const container = document.getElementById("interaction-container");
+      const text = document.getElementById("text");
+      container.innerHTML = "";
+      container.style = "";
+      text.innerHTML = "";
+      player.setVolume(0.5);
+      player.play(document.getElementById("flip").src, () => {
+        const turn_page = document.getElementById("turn_page_gif");
+        const turn_page_img = document.getElementById("turn_page");
+        turn_page.style.display = "none";
+        turn_page_img.style.display = "none";
+        currentPage++;
+        player.setVolume(1);
+        loadPage(currentPage);
+      });
+    }
+
+    function finishBook() {
+      const container = document.getElementById("interaction-container");
+      container.innerHTML = "";
+      const ranger_livre = document.getElementById("ranger_livre");
+      ranger_livre.style.display = "none";
+
+      let divContainer = document.createElement("div");
+      divContainer.classList.add("d-flex");
+      divContainer.classList.add("justify-content-center");
+      divContainer.classList.add("align-items-center");
+      divContainer.style = "width: 66vh; height: 66vh;";
+      let playButton = document.getElementById("star");
+      playButton.style.display = "block";
+      divContainer.appendChild(playButton);
+      container.appendChild(divContainer);
+
+      const bravo = document.getElementById("bravo");
+      player.play(document.getElementById("bravo").src);
+      setTimeout(() => {
+        window.location.href = '{{ url_for('finish_album', title=title) }}'
+      }, 4500);
+    }
+
+    function handleInteraction() {
+      if (!interactions.length || currentInteraction >= interactions.length) {
+        console.log("All interactions complete.");
+        const ding = document.getElementById("ding");
+        let turn_page;
+        //if (currentPage === maxPages) {
+        //  turn_page = document.getElementById("ranger_livre");
+        //} else {
+        turn_page = document.getElementById("turn_page");
+        //}
+        turn_page.style.display = "block";
+        turn_page.animate([
+          { transform: "scale(1)", opacity: 1 },
+          { transform: "scale(1.2)", opacity: 0.7 },
+          { transform: "scale(1)", opacity: 1 }
+        ], {
+          duration: 1000,
+          iterations: Infinity
+        });
+        player.play(document.getElementById("ding").src);
+        return;
+      }
+
+      const interaction = interactions[currentInteraction];
+      console.log(interaction)
+
+      if (interaction.type === "finish") {
+        const ranger_livre = document.getElementById("ranger_livre");
+        ranger_livre.style.display = "block";
+        ranger_livre.animate([
+          { transform: "scale(1)", opacity: 1 },
+          { transform: "scale(1.2)", opacity: 0.7 },
+          { transform: "scale(1)", opacity: 1 }
+        ], {
+          duration: 1000,
+          iterations: Infinity
+        });
+
+        player.play(document.getElementById("ding").src, () => {
+          const img = document.getElementById("image_path");
+          if (img) img.style.display = "none";
+        });
+      }
+
+      if (interaction.type === "sound") {
+
+        if (interaction.target) {
+          const img = document.getElementById("image_path");
+          if (img) img.style.display = "none";
+          const targetImg = document.getElementById(interaction.target);
+          if (targetImg) targetImg.style.display = "none";
+        }
+
+        const container = document.getElementById("interaction-container");
+        const imageWrapper = document.createElement("div");
+
+        if (interaction.image) {
+          container.innerHTML = "";
+          container.style.display = "flex";
+          container.style.justifyContent = "center";
+          container.style.alignItems = "center";
+          container.style.minHeight = "400px";
+          container.style.height = "100%";
+          imageWrapper.style.display = "flex";
+          imageWrapper.style.justifyContent = "center";
+          imageWrapper.style.alignItems = "center";
+          imageWrapper.style.minHeight = "400px";
+          imageWrapper.style.height = "100%";
+          const img = document.getElementById(interaction.image);
+          img.style.display = "block";
+          img.style.display = "block";
+          if (interaction.image && interaction.image1 && interaction.image2) {
+            img.style.maxWidth = "150px";
+            img.style.padding = "3rem";
+          } else if (interaction.image === "images/nid.jpg") {
+            img.style.maxWidth = "450px";
+          } else {
+            img.style.maxWidth = "250px";
+          }
+          img.style.height = "auto";
+          img.style.cursor = "pointer";
+          imageWrapper.appendChild(img);
+        }
+
+        if (interaction.image1) {
+          const img = document.getElementById(interaction.image1);
+          img.style.display = "block";
+          img.style.display = "block";
+          if (interaction.image && interaction.image1 && interaction.image2) {
+            img.style.maxWidth = "150px";
+            img.style.padding = "3rem";
+          } else {
+            img.style.maxWidth = "250px";
+          }
+          img.style.height = "auto";
+          img.style.cursor = "pointer";
+          imageWrapper.appendChild(img);
+        }
+
+        if (interaction.image2) {
+          const img = document.getElementById(interaction.image2);
+          img.style.display = "block";
+          img.style.display = "block";
+          if (interaction.image && interaction.image1 && interaction.image2) {
+            img.style.maxWidth = "150px";
+            img.style.padding = "3rem";
+          } else {
+            img.style.maxWidth = "250px";
+          }
+          img.style.height = "auto";
+          img.style.cursor = "pointer";
+          imageWrapper.appendChild(img);
+        }
+
+        if (interaction.image) container.appendChild(imageWrapper);
+
+        let audioInteraction = document.getElementById(interaction.audio)
+        if (audioInteraction) {
+          player.play(audioInteraction.src, () => {
+            currentInteraction++;
+            handleInteraction();
+          });
+        } else {
+          currentInteraction++;
+          handleInteraction();
+        }
+      } else if (interaction.type === "click") {
+        showClickableImage(interaction);
+      } else if (interaction.type === "speech") {
+        promptWordInteraction(interaction);
+      } else if (interaction.type === "click4") {
+        show1on4ClickableImage(interaction);
+      } else if (interaction.type === "karaoke") {
+        showKaraoke(interaction);
+      }
+    }
+
+    function show1on4ClickableImage(interaction) {
+      console.log("Starting 4 Image & Audio Interaction");
+
+      failureCount = 0;
+
+      let imageAudioSequence = [
+        { image: interaction.image1, audio: interaction.audio1 },
+        { image: interaction.image2, audio: interaction.audio2 },
+        { image: interaction.image3, audio: interaction.audio3 },
+        { image: interaction.image4, audio: interaction.audio4 },
+      ];
+
+      shuffleArray(imageAudioSequence);
+
+      let introAudio = document.getElementById(interaction.audio);
+
+      let container = document.getElementById("interaction-container");
+      container.innerHTML = "";
+      container.style.display = "flex";
+      container.style.justifyContent = "center";
+      container.style.alignItems = "center";
+      container.style.minHeight = "400px";
+      container.style.height = "100%";
+
+      if (introAudio) {
+        player.play(document.getElementById(interaction.audio).src, () => {
+          showImagesSequentially(imageAudioSequence, interaction, () => {
+            let outroAudio = document.getElementById(interaction.outro);
+            if (outroAudio) {
+              player.play(document.getElementById(interaction.outro).src, () => {
+                console.log("✅ All images displayed + last sound played, waiting for user interaction.");
+                waitForUserClick(interaction);
+                startFailureTimer(interaction);
+              })
+            } else {
+              waitForUserClick(interaction);
+              startFailureTimer(interaction);
+            }
+          });
+        })
+      } else {
+        showImagesSequentially(imageAudioSequence, interaction, () => {
+          let outroAudio = document.getElementById(interaction.outro);
+          if (outroAudio) {
+            player.play(document.getElementById(interaction.outro).src, () => {
+              console.log("✅ All images displayed + last sound played, waiting for user interaction.");
+              waitForUserClick(interaction);
+              startFailureTimer(interaction);
+            })
+          } else {
+            waitForUserClick(interaction);
+            startFailureTimer(interaction);
+          }
+        });
+      }
+    }
+
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1)); // Get random index
+        [array[i], array[j]] = [array[j], array[i]]; // Swap whole objects
+      }
+    }
+
+    function showImagesSequentially(sequence, interaction, onComplete) {
+      let index = 0;
+
+      function displayNext() {
+        if (index >= sequence.length) {
+          console.log('finito');
+          onComplete();
+          return;
+        }
+
+        let { image, audio } = sequence[index];
+
+        let current_img = document.getElementById(image);
+        if (!current_img) {
+          console.log(`❌ Image element not found: ${image}`);
+          index++;
+          displayNext();
+          return;
+        }
+        // Get parent container (col-6)
+        const parentContainer = document.querySelector(".col-6.border-start.position-relative.p-0.m-0");
+        if (!parentContainer) return; // Exit if not found
+
+        // Get the actual size of the parent container
+        const parentWidth = parentContainer.clientWidth;
+        const parentHeight = parentContainer.clientHeight;
+
+        // Get the interaction container
+        const container = document.getElementById("interaction-container");
+
+        // Set the container to grid layout
+        container.style.display = "grid";
+        container.style.width = `${parentWidth}px`;
+        container.style.height = `${parentHeight}px`;
+
+        // Get all images inside the container
+        const images = container.getElementsByTagName("img");
+        const numImages = Object.keys(interaction)
+          .filter(key => key.startsWith("image"))
+          .length;
+
+        // Determine grid structure based on number of images
+        const maxCols = numImages > 2 ? 2 : 1; // 2 columns if 3-4 images, 1 column if 1-2 images
+        const maxRows = Math.ceil(numImages / maxCols); // Calculate rows dynamically
+
+        // Set dynamic grid structure
+        container.style.gridTemplateColumns = `repeat(${maxCols}, 1fr)`;
+        container.style.gridTemplateRows = `repeat(${maxRows}, 1fr)`;
+
+        // Calculate max image size per cell
+        const totalGapWidth = (maxCols - 1) * 10;
+        const totalGapHeight = (maxRows - 1) * 10;
+        const cellWidth = (parentWidth - totalGapWidth) / maxCols;
+        const cellHeight = (parentHeight - totalGapHeight) / maxRows;
+
+        container.style.display = "grid";
+        container.style.gridTemplateColumns = "1fr 1fr"; // 2 columns
+        container.style.gridTemplateRows = "1fr 1fr"; // 2 rows
+
+        current_img.style.display = "block";
+        current_img.classList.add("clickable-image");
+        current_img.style.width = `${cellWidth}px`; // Ensure max width fits within grid
+        current_img.style.height = `${cellHeight}px`; // Ensure max height fits
+        current_img.style.objectFit = "contain"; // ✅ Maintain aspect ratio
+        current_img.style.gridColumn = (index % maxCols) + 1; // 1 or 2
+        current_img.style.gridRow = Math.floor(index / maxCols) + 1; // 1 or 2
+        current_img.style.justifySelf = "center"; // Horizontal centering
+        current_img.style.alignSelf = "center";   // Vertical centering
+        container.appendChild(current_img);
+
+        let audioElement = document.getElementById(audio);
+        console.log(audioElement)
+        if (!audioElement) {
+          console.log(`❌ Missing audio element: ${audio}`);
+          index++;
+          displayNext();
+          return;
+        }
+        player.play(document.getElementById(audio).src, () => {
+          console.log(`🎵 Playing: ${audio}`);
+          index++;
+          displayNext();
+        });
+      }
+
+      displayNext();
+    }
+
+    function waitForUserClick(interaction) {
+      let container = document.getElementById("interaction-container");
+      let images = container.getElementsByClassName("clickable-image");
+
+      for (let img of images) {
+        img.onclick = function (event) {
+          event.stopPropagation();
+          clearTimeout(failTimeout);
+
+          if (img.src.includes(interaction.toclick)) {
+            console.log("✅ Correct image clicked!");
+            processCorrectSelection(interaction);
+          } else {
+            processIncorrectSelection(interaction);
+          }
+        };
+      }
+
+      document.body.onclick = function () {
+        processIncorrectSelection(interaction);
+      };
+    }
+
+    function startFailureTimer(interaction) {
+      failTimeout = setTimeout(() => {
+        if (failureCount < 2) {
+          failureCount++;
+          console.log(`⏳ No selection detected. Failure ${failureCount}/2.`);
+
+          let failAudio = document.getElementById(interaction.fail);
+          if (failAudio) {
+            player.play(document.getElementById(interaction.fail).src, () => {
+              startFailureTimer(interaction);
+            })
+          } else {
+            console.log("❌ Failure audio not found.");
+          }
+        } else {
+          console.log("❌ Max failures reached. Moving to next.");
+          let timeoutAudio = document.getElementById(interaction.timeout);
+          let container = document.getElementById("interaction-container");
+          let images = container.getElementsByClassName("clickable-image");
+          stopAllAudio();
+          clearTimeout(failTimeout);
+          document.body.onclick = null;
+
+          for (let img of images) {
+            img.onclick = null
+          }
+
+          if (timeoutAudio) {
+            player.play(document.getElementById(interaction.timeout).src, () => {
+              document.body.onclick = null;
+              currentInteraction++;
+              handleInteraction();
+            });
+          } else {
+            console.log("❌ Timeout audio not found.");
+            document.body.onclick = null;
+            currentInteraction++;
+            handleInteraction();
+          }
+        }
+      }, 5000);
+    }
+
+    function processCorrectSelection(interaction) {
+      console.log("🎉 User selected the correct image!");
+      stopAllAudio();
+      clearTimeout(failTimeout);
+      document.body.onclick = null;
+      let container = document.getElementById("interaction-container");
+      container.innerHTML = "";
+      container.style = '';
+      container.style.display = "flex";
+      container.style.justifyContent = "center";
+      container.style.alignItems = "center";
+      container.style.minHeight = "400px";
+      container.style.height = "100%";
+      let images = container.getElementsByClassName("clickable-image");
+
+      if (interaction.image) {
+        const img = document.getElementById(interaction.image);
+        img.style.display = "block";
+        container.appendChild(img);
+      }
+
+      for (let img of images) {
+        img.onclick = null;
+      }
+      const dingBravo = document.getElementById("bravo");
+      player.play(document.getElementById("bravo").src, () => {
+        let successAudio = document.getElementById(interaction.success);
+        if (successAudio) {
+          player.play(document.getElementById(interaction.success).src, () => {
+            document.getElementById("interaction-container").innerHTML = "";
+            let container = document.getElementById("interaction-container");
+            let images = container.getElementsByClassName("clickable-image");
+            for (let img of images) {
+              img.onclick = null
+            }
+            document.body.onclick = null;
+            currentInteraction++;
+            handleInteraction();
+          });
+        } else {
+          console.log("❌ Success audio not found.");
+          moveToNextInteraction(interaction);
+        }
+      })
+    }
+
+    function processIncorrectSelection(interaction) {
+      console.log("🚨 Incorrect selection made.");
+
+      if (isPlayingFailure1on4) {
+        console.log("⏳ Audio is already playing, ignoring click.");
+        return;
+      }
+      clearTimeout(failTimeout);
+      failureCount++;
+
+      let failAudio = document.getElementById(interaction.fail);
+      if (failAudio) {
+        isPlayingFailure1on4 = true;
+
+        player.play(document.getElementById(interaction.fail).src, () => {
+          isPlayingFailure1on4 = false;
+          if (failureCount < 2) {
+            console.log(`❌ Incorrect click! Failure ${failureCount}/2.`);
+            startFailureTimer(interaction);
+          } else {
+            console.log("❌ Max failures reached. Moving to next.");
+            if (interaction.image) {
+              const img = document.getElementById(interaction.image);
+              img.style.display = "block";
+            }
+            let timeoutAudio = document.getElementById(interaction.timeout);
+            let container = document.getElementById("interaction-container");
+            let images = container.getElementsByClassName("clickable-image");
+            stopAllAudio();
+            document.body.onclick = null;
+            clearTimeout(failTimeout);
+            container.innerHTML = "";
+            container.style = '';
+            container.style.display = "flex";
+            container.style.justifyContent = "center";
+            container.style.alignItems = "center";
+            container.style.minHeight = "400px";
+            container.style.height = "100%";
+            for (let img of images) {
+              img.onclick = null
+            }
+
+            if (timeoutAudio) {
+              player.play(document.getElementById(interaction.timeout).src, () => {
+                document.body.onclick = null;
+                currentInteraction++;
+                handleInteraction();
+              });
+            }
+          };
+        })
+      } else {
+        console.log("❌ Failure audio not found.");
+      }
+    }
+
+    function moveToNextInteraction(interaction) {
+      let container = document.getElementById("interaction-container");
+      let images = container.getElementsByClassName("clickable-image");
+
+      for (let img of images) {
+        img.onclick = null
+      }
+
+      document.body.onclick = null;
+      currentInteraction++;
+      handleInteraction();
+    }
+
+    function stopAllAudio() {
+      let audios = document.getElementsByTagName("audio");
+      for (let audio of audios) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    }
+
+    // Function to play audio
+    function showKaraoke(interaction) {
+      const imgToHide = document.getElementById(interaction.target);
+      if (imgToHide) imgToHide.style.display = "none";
+      if (interaction.image) {
+        const img = document.getElementById(interaction.image);
+        img.style.display = "block";
+        const container = document.getElementById("interaction-container");
+        container.innerHTML = "";
+        container.style.display = "flex";
+        container.style.justifyContent = "center";
+        container.style.alignItems = "center";
+        container.style.minHeight = "400px";
+        container.style.height = "100%";
+        container.appendChild(img);
+      }
+
+      let audio = document.getElementById(interaction.audio)
+      let text = document.getElementById("text")
+      text.innerHTML = "";
+      let words = interaction.text.split(" ");
+      text.classList.remove("fs-1", "fs-2", "fs-3", "fs-4", "fs-5", "fs-6");
+      if (interaction.text.length > 250) {
+        text.classList.add("fs-4");
+      } else {
+        text.classList.add("fs-2");
+      }
+      words.forEach(word => {
+        let span = document.createElement("span");
+        span.textContent = word + " ";
+        text.appendChild(span);
+      });
+      audio.currentTime = 0;
+      currentWordIndex = 0;
+      resetHighlighting();
+      highlightText(interaction);
+    }
+
+    // Function to play audio
+    function playAudio(audio) {
+      console.log(`playAudio: ${audio.src}`);
+      audio.currentTime = 0;
+      player.play(audio.src, () => {
+        handleInteraction();
+      })
+      currentWordIndex = 0;
+      resetHighlighting();
+      highlightText();
+    }
+
+    function startTimeout(interaction, img) {
+      failTimeout = setTimeout(() => {
+        if (failureClickCount < 2) {
+          failureClickCount++;
+          console.log(`⏳ No click detected. Playing failure audio (${failureClickCount}/2)`);
+
+          const audioFailure = document.getElementById(interaction.fail);
+          if (audioFailure) {
+            player.play(document.getElementById(interaction.fail).src, () => {
+              startTimeout(interaction, img);
+            });
+          } else {
+            console.log("❌ Audio failure element not found.");
+          }
+        } else {
+          console.log("❌ Maximum failures reached. Moving to next interaction.");
+
+          const audioFailureTimeout = document.getElementById(interaction.timeout);
+          if (audioFailureTimeout) {
+            player.play(document.getElementById(interaction.timeout).src, () => {
+              img.remove();
+              document.body.onclick = null;
+              currentInteraction++;
+              handleInteraction();
+            });
+          } else {
+            console.log("❌ Timeout audio element not found.");
+            img.remove();
+            document.body.onclick = null;
+            currentInteraction++;
+            handleInteraction();
+          }
+        }
+      }, 5000);
+    }
+
+
+
+    function showClickableImage(interaction) {
+      console.log("showClickableImage");
+
+      failureClickCount = 0; // Reset failure count for new interaction
+
+      const audio = document.getElementById(interaction.audio);
+      if (!audio) {
+        console.log("❌ Audio element not found:", interaction.audio);
+        return;
+      }
+
+      // Create the clickable image
+      const img = document.createElement("img");
+      const title = "{{ title }}";
+      img.src = `/static/books/${title}/${interaction.target}`;
+      img.id = interaction.id;
+      img.style.maxHeight = "400px";
+      img.style.display = "block";
+
+      document.getElementById("interaction-container").appendChild(img);
+
+      player.play(document.getElementById(interaction.audio).src, () => {
+
+        startTimeout(interaction, img);
+
+        img.onclick = (event) => {
+          event.stopPropagation();
+          clearTimeout(failTimeout);
+
+          console.log("✅ Correct image clicked!");
+
+          img.style.display = "none";
+          var audios = document.getElementsByTagName("audio");
+          for (var i = 0, len = audios.length; i < len; i++) {
+            audios[i].pause();
+          }
+
+          document.body.onclick = null;
+
+          const dingBravo = document.getElementById("bravo");
+          const audioSuccess = document.getElementById(interaction.success);
+          if (dingBravo) {
+            player.play(document.getElementById("bravo").src, () => {
+              if (audioSuccess) {
+                player.play(document.getElementById(interaction.success).src, () => {
+                  img.remove();
+                  currentInteraction++;
+                  handleInteraction();
+                });
+              } else {
+                console.log("❌ Success audio element not found.");
+                img.remove();
+                currentInteraction++;
+                handleInteraction();
+              }
+            });
+          }
+
+        };
+
+        // ❌ Handle incorrect clicks (clicking anywhere else)
+        document.body.onclick = function () {
+          playFauxAudio(interaction, img);
+        };
+      });
+    }
+  
+    // 🚨 Handle incorrect clicks (clicking outside the image)
+    function playFauxAudio(interaction, img) {
+      console.log("Incorrect area clicked!");
+
+      if (isPlayingFailure) {
+        console.log("⏳ Audio is already playing, ignoring click.");
+        return;
+      }
+
+      
+
+      // ✅ Clear global timeout to restart the failure countdown
+      clearTimeout(failTimeout);
+
+      const fauxAudio = document.getElementById(interaction.fail);
+      if (fauxAudio) {
+        isPlayingFailure = true;
+        player.play(document.getElementById(interaction.fail).src, () => {
+          isPlayingFailure = false;
+          if (failureClickCount < 2) {
+            failureClickCount++;
+            console.log(`❌ Incorrect click! Failure ${failureClickCount}/2`);
+            startTimeout(interaction, img); // Restart timeout after incorrect click
+          } else {
+            console.log("❌ Maximum incorrect clicks reached. Moving to next interaction.");
+
+            const audioFailureTimeout = document.getElementById(interaction.timeout);
+            const img = document.getElementById(interaction.id);
+            if (img) {
+              img.style.display = "none";
+              img.onclick = null;
+            }
+            if (audioFailureTimeout) {
+              player.play(document.getElementById(interaction.timeout).src, () => {
+                document.body.onclick = null;
+                currentInteraction++;
+                handleInteraction();
+              });
+            } else {
+              console.log("❌ Timeout audio element not found.");
+              document.body.onclick = null;
+              currentInteraction++;
+              handleInteraction();
+            }
+          }
+        });
+      } else {
+        console.log("❌ Faux audio element not found.");
+      }
+    }
+
+    function promptWordInteraction(interaction) {
+      let failureSpeechCount = 0;
+      let recognition;
+      let silenceTimeout, attemptTimeout2;
+
+      // Hide previous interaction image (if applicable)
+      if (interaction.target) {
+        const imgToHide = document.getElementById(interaction.target);
+        if (imgToHide) imgToHide.style.display = "none";
+      }
+
+      // Show the new interaction image
+      if (interaction.image) {
+        const img = document.getElementById(interaction.image);
+        if (img) {
+          img.style.display = "block";
+          const container = document.getElementById("interaction-container");
+          container.innerHTML = "";
+          container.style.display = "flex";
+          container.style.justifyContent = "center";
+          container.style.alignItems = "center";
+          container.style.minHeight = "400px";
+          container.style.height = "100%";
+          container.appendChild(img);
+        }
+      }
+
+      // Start interaction: Play initial audio before recognition
+      if (interaction.audio) {
+        player.play(document.getElementById(interaction.audio).src, () => {
+          startThreeRecognitionAttempts();
+        });
+      } else {
+        startThreeRecognitionAttempts();
+      }
+
+      function startThreeRecognitionAttempts() {
+        console.log("🎤 Starting speech recognition sequence (max 3 attempts)");
+
+        // Attempt 1: Start immediately
+        startSpeechRecognition();
+
+        //// Attempt 2: If no success, retry after 5s
+        //attemptTimeout1 = setTimeout(() => {
+        //  if (failureSpeechCount < 1) {
+        //    console.log("🔄 No success, retrying (Attempt 2/3)");
+        //    player.play(document.getElementById(interaction.fail).src, () => {
+        //        startSpeechRecognition();
+        //    });
+        //  }
+        //}, 7000);
+//
+        //// Attempt 3: If no success, retry again after 10s
+        //attemptTimeout2 = setTimeout(() => {
+        //  if (failureSpeechCount < 2) {
+        //    console.log("🔄 No success, retrying (Attempt 3/3)");
+        //    player.play(document.getElementById(interaction.fail).src, () => {
+        //        startSpeechRecognition();
+        //    });
+        //  }
+        //}, 14000);
+      }
+
+      function startSpeechRecognition() {
+        if (!window.webkitSpeechRecognition) {
+          console.error("Speech recognition not supported.");
+          return;
+        }
+
+        // Ensure recognition instance is fresh
+        if (recognition) {
+          recognition.abort();
+          recognition = null;
+        }
+
+        recognition = new webkitSpeechRecognition();
+        recognition.lang = "fr-FR";
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        // Show recording icon
+        const recIcon = document.getElementById("rec");
+        recIcon.style.display = "block";
+        recIcon.animate([
+          { transform: "scale(1)", opacity: 1 },
+          { transform: "scale(1.1)", opacity: 0.7 },
+          { transform: "scale(1)", opacity: 1 }
+        ], { duration: 1000, iterations: Infinity });
+
+        console.log("🎤 Listening for:", interaction.word);
+
+        silenceTimeout = setTimeout(() => {
+          console.log("⏳ No speech detected. Stopping manually.");
+          if (recognition) {
+            recognition.abort();
+            recognition = null;
+          }
+          handleFailure();
+        }, 8000);
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+          console.log("🔎 Recognized speech:", transcript);
+
+          if (interaction.allowed.some(word => transcript.includes(word))) {
+            handleSuccess();
+          } else {
+            if (recognition) {
+              recognition.abort();
+              recognition = null;
+            }
+            handleFailure();
+          }
+        };
+
+        recognition.onerror = (event) => {
+          console.error("❌ Speech recognition error:", event.error);
+          if (event.error === "no-speech") {
+            handleFailure();
+          }
+        };
+
+        recognition.onend = () => {
+          console.log("Speech recognition ended.");
+          document.getElementById("rec").style.display = "none";
+        };
+
+        recognition.start();
+      }
+
+      function handleFailure() {
+        failureSpeechCount++;
+        document.getElementById("rec").style.display = "none";
+
+        if (failureSpeechCount > 2) {
+          console.log("❌ Max failures reached. Moving to next interaction.");
+          stopAllAttempts();
+
+          player.play(document.getElementById(interaction.timeout).src, () => {
+            currentInteraction++;
+            handleInteraction();
+          });
+        } else {
+          console.log("🔄 Playing failure sound...");
+          if (silenceTimeout) clearTimeout(silenceTimeout);
+          player.play(document.getElementById(interaction.fail).src, () => {
+            startSpeechRecognition();
+          });
+
+          //if (recognition) {
+          //  recognition.abort();
+          //  recognition = null;
+          //}
+          //player.play(document.getElementById(interaction.fail).src, () => {
+          //  setTimeout(() => {
+          //    recognition = new webkitSpeechRecognition();
+          //    recognition.lang = "fr-FR";
+          //    recognition.continuous = false;
+          //    recognition.interimResults = false;
+          //    recognition.start();
+          //  }, 10);
+          //});
+        }
+      }
+
+      //function handleSuccess() {
+      //  console.log("✅ Correct word recognized!");
+      //  stopAllAttempts();
+      //  document.getElementById("rec").style.display = "none";
+      //  if (!Howler._audioUnlocked) {
+      //    console.log("🔓 Unlocking Howler.js audio on iOS...");
+      //    const unlockSound = new Howl({ src: ["silence.mp3"], volume: 0 });
+      //    unlockSound.play();
+      //  }
+      //  Howler.stop();
+      //  setTimeout(() => {
+      //    player.play(document.getElementById("bravo").src, () => {
+      //      player.play(document.getElementById(interaction.success).src, () => {
+      //        currentInteraction++;
+      //        handleInteraction();
+      //      });
+      //    });
+      //  }, 100); // Small delay to prevent rapid execution
+      //}
+
+      function handleSuccess() {
+        console.log("✅ Correct word recognized!");
+
+        stopAllAttempts();
+        document.getElementById("rec").style.display = "none";
+        player.unlockAudio();
+        player.stop();
+        setTimeout(() => {
+          player.queueSound(document.getElementById("bravo").src, () => {
+            player.queueSound(document.getElementById(interaction.success).src, () => {
+              currentInteraction++;
+              handleInteraction();
+            });
+          });
+        }, 100); // Small delay to prevent rapid execution
+      }
+
+      function stopAllAttempts() {
+        if (recognition) {
+          recognition.abort();
+          recognition = null;
+        }
+        if (silenceTimeout) clearTimeout(silenceTimeout);
+        //clearTimeout(attemptTimeout2);
+      }
+    }
+
+    function resetHighlighting() {
+      const textContainer = document.getElementById("text");
+      const words = textContainer?.getElementsByTagName("span");
+      if (words) {
+        for (let word of words) {
+          word.classList.remove("highlighted");
+        }
+      }
+    }
+
+    function highlightText(interaction = null) {
+      let audioId = "audio"
+      if (interaction?.audio) audioId = interaction.audio
+
+      if (interaction.audio) {
+        player.play(document.getElementById(interaction.audio).src, () => {
+          currentInteraction++;
+          handleInteraction()
+        });
+      }
+
+      const audio = document.getElementById(audioId);
+      const textContainer = document.getElementById("text");
+      if (!textContainer) { return; }
+      const words = Array.from(textContainer.getElementsByTagName("span"));
+
+      let wordTimings = {{ words_sync| tojson }};  
+
+      if (interaction?.sync) wordTimings = interaction.sync
+      player.sound.on("play", () => {
+        let cumulativeStart = 0;
+        if (wordTimings) {
+          wordTimings.forEach(({ duration }, wordIndex) => {
+            const wordElement = words[wordIndex];
+
+            if (!wordElement) return;
+
+            const originalText = wordElement.innerText;
+            const letters = originalText.split("");
+
+            wordElement.innerHTML = letters
+              .map(letter => `<span>${letter}</span>`)
+              .join("");
+
+            const letterSpans = wordElement.children;
+            const letterDuration = duration / letters.length;
+
+            Array.from(letterSpans).forEach((letterSpan, letterIndex) => {
+              const start = cumulativeStart + letterIndex * letterDuration;
+              setTimeout(() => {
+                letterSpan.classList.add("highlighted");
+              }, start * 1000);
+            });
+
+            cumulativeStart += duration;
+          });
+        }
+      }); 
+    }
+
+    function loadPage(pageNumber) {
+      let url = `/lecture/${bookTitle}/${pageNumber}/${selectedLevel}`;
+
+      fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(response => response.json())
+        .then(data => updatePageContent(data))
+        .catch(error => console.error("Error loading page:", error));
+    }
+
+    const container = document.getElementById("interaction-container");
+    if (container && text)  {
+      container.innerHTML = "";
+      container.style.display = "flex";
+      container.style.justifyContent = "center";
+      container.style.alignItems = "center";
+      container.style.minHeight = "400px";
+      container.style.height = "100%";
+    }
+
+    function updatePageContent(data) {
+      if (!data) return;
+
+      const interactionContainer = document.getElementById("interaction-container");
+      const pageTextContainer = document.getElementById("text");
+      interactionContainer.innerHTML = "";
+      pageTextContainer.innerHTML = "";
+      currentInteraction = 0;
+
+      if (data.page_number === 0 && !bookStarted) {
+        showPlayButton(data);
+        return;
+      }
+
+      if (data.image_path) {
+        let imgElement = document.createElement("img");
+        imgElement.src = `/static/${data.image_path}`;
+        imgElement.id = "image_path";
+        imgElement.alt = "Page Image";
+        if (!bookStarted) {
+          imgElement.style.display = "none";
+        }
+        imgElement.classList.add("img-fluid");
+        interactionContainer.appendChild(imgElement);
+      }
+
+      // Update text
+      if (data.page_text) {
+        const words = data.page_text.split(" ");
+        text.classList.remove("fs-1", "fs-2", "fs-3", "fs-4", "fs-5", "fs-6");
+        if (data.page_text.length > 250) {
+          text.classList.add("fs-4");
+        } else {
+          text.classList.add("fs-2");
+        }
+        words.forEach(word => {
+          let span = document.createElement("span");
+          span.textContent = word;
+          pageTextContainer.appendChild(span);
+          pageTextContainer.appendChild(document.createTextNode(" ")); // Add space between words
+        });
+      }
+
+      // Dynamically create control buttons
+      const controlsContainer = document.getElementById("controls");
+
+      Object.entries(data.assets).forEach(([key, value]) => {
+        let element;
+        let fileExtension = value.split('.').pop();
+
+        if (["mp3", "wav", "ogg", "m4a"].includes(fileExtension)) {
+          element = document.createElement("audio");
+          element.id = key;
+          element.src = `/static/${value}`;
+          controlsContainer.appendChild(element);
+        }
+      });
+
+      if (data.assets.turn_page_gif) {
+        let img = document.createElement("img");
+        img.id = "turn_page_gif";
+        img.src = `/static/${data.assets.turn_page_gif}`;
+        img.style = "height: 66vh;display:none;";
+        controlsContainer.append(img)
+      }
+
+      if (data.assets.star) {
+        let img = document.createElement("img");
+        img.id = "star";
+        img.src = `/static/${data.assets.star}`;
+        img.style = "height: 66vh;display:none;";
+        controlsContainer.append(img)
+      }
+
+      if (data.assets.relire && currentPage === 0) {
+        let a = document.createElement("a");
+        a.id = "relire";
+        a.onclick = () => playAudio(document.getElementById("audio"));
+
+        let img = document.createElement("img");
+        img.src = `/static/${data.assets.relire}`;
+        img.style = "width: 130px; height: 130px;";
+        a.appendChild(img);
+        controlsContainer.appendChild(a);
+      }
+
+      if (data.assets.rec) {
+        let img = document.createElement("img");
+        img.id = "rec";
+        img.src = `/static/${data.assets.rec}`;
+        img.style = "width: 130px; height: 130px;display:none; padding-top:20px;";
+        controlsContainer.appendChild(img);
+      }
+
+      if (data.assets.turn_page) {
+        let a = document.createElement("a");
+        a.id = "turn_page";
+        a.style.display = "none";
+        a.onclick = () => turnPage(`/lecture/${data.title}/${data.next_page}`);
+
+        let img = document.createElement("img");
+        img.src = `/static/${data.assets.turn_page}`;
+        img.style = "width: 130px; height: 130px;";
+        a.appendChild(img);
+
+        controlsContainer.appendChild(a);
+      }
+
+      if (data.assets.ranger_livre && !document.getElementById("ranger_livre")) {
+        let a = document.createElement("a");
+        a.id = "ranger_livre";
+        a.style.display = "none";
+        a.onclick = finishBook;
+
+        let img = document.createElement("img");
+        img.src = `/static/${data.assets.ranger_livre}`;
+        img.style = "width: 130px; height: 130px;";
+        a.appendChild(img);
+
+        controlsContainer.appendChild(a);
+      }
+
+      // Update interactions
+      updateInteractions(data.interactions, data.base_path);
+
+      // Update audio
+      if (data.audio_path) {
+        let audioElement = document.createElement("audio");
+        audioElement.src = `/static/${data.audio_path}`;
+        audioElement.id = 'audio';
+
+        player.play(`/static/${data.audio_path}`, () => {
+          console.log("First audio finished, handling interactions...");
+          handleInteraction(); // Trigger next step
+        });
+
+        if (data.words_sync) {
+          currentWordIndex = 0;
+          resetHighlighting();
+          const textContainer = document.getElementById("text");
+          if (!textContainer) { return; }
+          const words = Array.from(textContainer.getElementsByTagName("span"));
+
+          let wordTimings = data.words_sync;
+
+          player.sound.on("play", () => {
+            let cumulativeStart = 0;
+            if (wordTimings) {
+              wordTimings.forEach(({ duration }, wordIndex) => {
+                const wordElement = words[wordIndex];
+
+                const originalText = wordElement.innerText;
+                const letters = originalText.split("");
+
+                wordElement.innerHTML = letters
+                  .map(letter => `<span>${letter}</span>`)
+                  .join("");
+
+                const letterSpans = wordElement.children;
+                const letterDuration = duration / letters.length;
+
+                Array.from(letterSpans).forEach((letterSpan, letterIndex) => {
+                  const start = cumulativeStart + letterIndex * letterDuration;
+                  setTimeout(() => {
+                    letterSpan.classList.add("highlighted");
+                  }, start * 1000);
+                });
+
+                cumulativeStart += duration;
+              });
+            }
+          });
+        }
+      }
+
+      // Preload the next page
+      if (data.next_page) {
+        //preloadPage(data.next_page);
+      } else {
+        console.log("End of book reached.");
+      }
+    }
+
+    function updateInteractions(currentInteractions, basePath) {
+      const interactionContainer = document.getElementById("interaction-container");
+      const controlsContainer = document.getElementById("controls");
+      interactions = currentInteractions
+      currentInteractions.forEach(interaction => {
+        // Create elements dynamically based on interaction type
+
+        // Handle "karaoke" interactions
+        if (interaction.type === "karaoke" && interaction.audio) {
+          let audio = document.createElement("audio");
+          audio.id = interaction.audio;
+          audio.src = `/static/${basePath}/${interaction.audio}`;
+          controlsContainer.appendChild(audio);
+        }
+
+        if (interaction.type === "karaoke" && interaction.image) {
+          let img = document.createElement("img");
+          img.id = interaction.image;
+          img.className = "img-fluid";
+          img.src = `/static/${basePath}/${interaction.image}`;
+          img.alt = interaction.image;
+          img.style = "display: none; cursor: pointer;max-height:450px;";
+          controlsContainer.appendChild(img);
+        }
+
+        // Handle "sound" and "click4" interactions
+        if (interaction.type === "sound" || interaction.type === "click4") {
+          ["audio", "image", "image1", "image2", "image3", "image4", "audio1", "audio2", "audio3", "audio4", "outro", "success", "fail", "timeout"]
+            .forEach(key => {
+              if (interaction[key]) {
+                let element;
+                if (key.startsWith("audio")) {
+                  element = document.createElement("audio");
+                  element.id = interaction[key];
+                  element.src = `/static/${basePath}/${interaction[key]}`;
+                  controlsContainer.appendChild(element);
+                } else {
+                  element = document.createElement("img");
+                  element.id = interaction[key];
+                  element.className = "img-fluid";
+                  element.src = `/static/${basePath}/${interaction[key]}`;
+                  element.alt = interaction[key];
+                  element.style = "display: none; cursor: pointer;max-height:450px;";
+                  controlsContainer.appendChild(element);
+                }
+              }
+            });
+        }
+
+        // Handle "click" and "speech" interactions
+        if (interaction.type === "click" || interaction.type === "speech") {
+          if (interaction.target && interaction.type === "click") {
+            let img = document.createElement("img");
+            img.id = interaction.id;
+            img.className = "img-fluid";
+            img.src = `/static/${basePath}/${interaction.target}`;
+            img.alt = "Clickable Target";
+            img.style = "display: none; cursor: pointer;max-height:450px;";
+            controlsContainer.appendChild(img);
+          }
+
+          if (interaction.image) {
+            let img = document.createElement("img");
+            img.id = interaction.image;
+            img.className = "img-fluid";
+            img.src = `/static/${basePath}/${interaction.image}`;
+            img.alt = interaction.word;
+            img.style = "display: none; cursor: pointer;max-height:450px;";
+            controlsContainer.appendChild(img);
+          }
+
+          ["success", "fail", "timeout", "audio"].forEach(key => {
+            if (interaction[key]) {
+              let audio = document.createElement("audio");
+              audio.id = interaction[key];
+              audio.src = `/static/${basePath}/${interaction[key]}`;
+              controlsContainer.appendChild(audio);
+            }
+          });
+        }
+      });
+    }
+
+    function preloadPage(pageNumber) {
+      fetch(`/lecture/${bookTitle}/${pageNumber}`, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(response => response.json())
+        .then(data => updatePageContent(data))
+        .catch(error => console.error("Error preloading page:", error));
+    }
+
+    function startBook() {
+      bookStarted = true;
+      document.getElementById("play").style.display = "none";
+      loadPage(0);
+    }
+
+    function showPlayButton(data) {
+      const container = document.getElementById("interaction-container");
+      container.innerHTML = "";
+      container.style.display = "flex";
+      container.style.justifyContent = "center";
+      container.style.alignItems = "center";
+      container.style.minHeight = "400px";
+      container.style.height = "100%";
+      let divContainer = document.createElement("div");
+      divContainer.classList.add("d-flex");
+      divContainer.classList.add("justify-content-center");
+      divContainer.classList.add("align-items-center");
+      divContainer.style = "width: 66vh; height: 66vh;";
+      let playButton = document.createElement("img");
+      playButton.id = "play";
+      playButton.src = `/static/${data.assets.play}`;
+      playButton.style = "width: 130px; height: 130px; cursor: pointer;";
+      playButton.onclick = startBook;
+      divContainer.appendChild(playButton);
+      container.appendChild(divContainer);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      currentPage = {{ page_number }};
+      maxPages = {{ max_pages }};
+
+      if (currentPage < maxPages) {
+        loadPage(currentPage);
+      }
+    });
+
+  </script>
+</head>
+
+<body class="min-vh-100">
+  <!-- En-tête avec le logo HEP dans une barre bleue -->
+  {# <header style="height: 12.5vh;"> #}
+    <header style="height: 12.5vh;">
+      {# <div class="container-xxl"> #}
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <img id="logo" src="{{ url_for('static', filename='images/hep.svg') }}" alt="Logo HEP"
+              onclick="window.location.href='{{ url_for('selection_lecture') }}'" />
+        </div>
+        <div class="user-info">
+          {{ current_user.username }}
+          <!-- Bouton pour se déconnecter -->
+        </div>
+        <div class="p-0 m-0">
+          <!-- <a class="p-0 m-0" href="{{ url_for('logout') }}" class="logout-button">Se déconnecter</a> -->
+          <a href="{{ url_for('selection_lecture') }}">
+            <img src="{{ url_for('static', filename='books/images/bibliothèque.jpg') }}"
+              alt="Retour à la sélection des albums" style="width: 50px; height: auto; border-radius: 5px;">
+          </a>
+        </div>
+      </div>
+      {# {% if current_user.is_superadmin %}
+      <div class="user-info">
+        <a href="{{ url_for('superadmin') }}" class="logout-button">Superadmin</a>
+      </div>
+      {% endif %} #}
+    </header>
+
+    {# <div class="container-xxl text-center min-vh-100"> #}
+      <div class="container-xxl text-center">
+        <div class="row border border-2" id="big-container" style="height: 66vh;">
+          <div class="col-6 border-end border-2 position-relative">
+            <div class="d-flex h-100 align-items-center justify-content-center">
+              {% set text_class = 'fs-4' if page_text and page_text|length > 250 else 'fs-2' %}
+              <p id="text" class="{{ text_class }}">
+                {% if page_text %}
+                {% for word in page_text.split() %}
+                <span>{{ word }}</span>
+                {% endfor %}
+                {% endif %}
+              </p>
+            </div>
+            <p class="p-0 m-0 fs-3 text-start position-absolute" style="bottom: 5px; left: 10px">
+              {% if page_number != 0 %} {{ (2 * page_number - 1) }} {% endif %}
+            </p>
+          </div>
+          <div class="col-6 border-start position-relative p-0 m-0">
+            <div id="interaction-container" class="text-center" style="display: flex; justify-content: center; align-items: center; height: 100%;">
+              <!-- Image cliquable avec la zone du chaton -->
+              <img src="{{ url_for('static', filename=image_path) }}" id="image_path" alt="Page Image" class="h-100 img-fluid"
+                style="display:none" />
+              <!-- The clickable 'O' image will only appear on the desired page -->
+              {% if page_number == 0 and title=="oreilles" %}
+              <div class="text-center" id="clickable_image"></div>
+              <!-- Audio "bravo.mp3" pour féliciter l'enfant -->
+              <audio id="bravoAudio" src="{{ url_for('static', filename='books/audio/bravo.mp3') }}"></audio>
+              <!-- Audio "faux.mp3" joué si l'enfant clique au mauvais endroit (page 4) -->
+              <audio id="fauxAudio" src="{{ url_for('static', filename='books/audio/faux.mp3') }}"></audio>
+              {% endif %}
+
+              <p class="p-0 m-0 fs-3 text-end position-absolute" style="bottom: 5px; right: 10px">
+                {% if page_number != 0 %} {{ 2 * page_number }} {% endif %}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="row" id="buttons" style="height: 12.5vh;">
+          <div class="d-flex justify-content-between p-0 m-0" id="controls">
+            {% if relire %}
+            <a id="relire" onclick="playAudio(document.getElementById('audio'))">
+              <img src="{{ url_for('static', filename=relire) }}" style="width: 130px; height: 130px;" />
+            </a>
+            {% endif %}
+            {% if turn_page %}
+            <a style="display: none" id="turn_page"
+              onClick="turnPage('{{ url_for('lecture', title=title ,page_number=next_page) }}')">
+              <img src="{{ url_for('static', filename=turn_page) }}" style="width: 130px; height: 130px;" />
+            </a>
+            {% endif %}
+            {% if turn_page_gif %}
+            <img style="display: none" id="turn_page_gif" style="height: 66vh;"
+              src="{{ url_for('static', filename=turn_page_gif) }}" />
+            {% endif %}
+
+          </div>
+
+          {# {% for interaction in interactions %}
+          {% if interaction.type == "karaoke" and interaction.audio %}
+          <audio id="{{ interaction.audio }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.audio) }}"></audio>
+          {% endif %}
+          {% if interaction.type == "karaoke" and interaction.image %}
+          <img id="{{ interaction.image }}" class="img-fluid"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.image) }}" alt="{{ interaction.image }}"
+            style="display: none; cursor: pointer;" />
+          {% endif %}
+          {% if interaction.type == "sound" or interaction.type == "click4" %}
+          {% if interaction.audio %}
+          <audio id="{{ interaction.audio }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.audio) }}"></audio>
+          {% endif %}
+          {% if interaction.image %}
+          <img id="{{ interaction.image }}" class="img-fluid"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.image) }}" alt="{{ interaction.image }}"
+            style="display: none; cursor: pointer;" />
+          {% endif %}
+          {% if interaction.image1 %}
+          <img id="{{ interaction.image1 }}" class="img-fluid"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.image1) }}" alt="{{ interaction.image1 }}"
+            style="display: none; cursor: pointer;" />
+          {% endif %}
+          {% if interaction.image2 %}
+          <img id="{{ interaction.image2 }}" class="img-fluid"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.image2) }}" alt="{{ interaction.image2 }}"
+            style="display: none; cursor: pointer;" />
+          {% endif %}
+          {% if interaction.image3 %}
+          <img id="{{ interaction.image3 }}" class="img-fluid"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.image3) }}" alt="{{ interaction.image3 }}"
+            style="display: none; cursor: pointer;" />
+          {% endif %}
+          {% if interaction.image4 %}
+          <img id="{{ interaction.image4 }}" class="img-fluid"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.image4) }}" alt="{{ interaction.image4 }}"
+            style="display: none; cursor: pointer;" />
+          {% endif %}
+          {% if interaction.audio1 %}
+          <audio id="{{ interaction.audio1 }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.audio1) }}"></audio>
+          {% endif %}
+          {% if interaction.audio2 %}
+          <audio id="{{ interaction.audio2 }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.audio2) }}"></audio>
+          {% endif %}
+          {% if interaction.audio3 %}
+          <audio id="{{ interaction.audio3 }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.audio3) }}"></audio>
+          {% endif %}
+          {% if interaction.audio4 %}
+          <audio id="{{ interaction.audio4 }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.audio4) }}"></audio>
+          {% endif %}
+          {% if interaction.outro %}
+          <audio id="{{ interaction.outro }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.outro) }}"></audio>
+          {% endif %}
+          {% if interaction.success %}
+          <audio id="{{ interaction.success }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.success) }}"></audio>
+          {% endif %}
+          {% if interaction.fail %}
+          <audio id="{{ interaction.fail }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.fail) }}"></audio>
+          {% endif %}
+          {% if interaction.timeout %}
+          <audio id="{{ interaction.timeout }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.timeout) }}"></audio>
+          {% endif %}
+          {% endif %}
+          {% if interaction.type == "click" or interaction.type == "speech" %}
+          {% if interaction.target or interaction.type == "click" %}
+          <img id="{{ interaction.id }}" class="img-fluid"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.target) }}" alt="Clickable Target"
+            style="display: none; cursor: pointer;" />
+          {% endif %}
+          {% if interaction.image %}
+          <img id="{{ interaction.image }}" class="img-fluid"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.image) }}" alt="{{ interaction.word }}"
+            style="display: none; cursor: pointer;" />
+          {% endif %}
+          {% if interaction.success %}
+          <audio id="{{ interaction.success }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.success) }}"></audio>
+          {% endif %}
+          {% if interaction.fail %}
+          <audio id="{{ interaction.fail }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.fail) }}"></audio>
+          {% endif %}
+          {% if interaction.timeout %}
+          <audio id="{{ interaction.timeout }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.timeout) }}"></audio>
+          {% endif %}
+          {% if interaction.audio %}
+          <audio id="{{ interaction.audio }}"
+            src="{{ url_for('static', filename=base_path + '/' + interaction.audio) }}"></audio>
+          {% endif %}
+          {% endif %}
+          {% endfor %} #}
+          {% if audio_path %}
+          <audio id="audio" src="{{ url_for('static', filename=audio_path) }}"></audio>
+          {% endif %}{% if bravo %}
+          <audio id="bravo" src="{{ url_for('static', filename=bravo) }}"></audio>
+          {% endif %} {% if ding %}
+          <audio id="ding" src="{{ url_for('static', filename=ding) }}"></audio>
+          {% endif %}{% if flip %}
+          <audio id="flip" src="{{ url_for('static', filename=flip) }}"></audio>
+          {% endif %}
+        </div>
+</body>
+
+</html>
