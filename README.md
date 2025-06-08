@@ -1,1 +1,1 @@
-# lecti.ch
+# lecti
